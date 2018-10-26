@@ -87,8 +87,8 @@
 			isa = PBXGroup;
 			children = (
 				773925D92182F58600DBF401 /* Lame */,
-				773925DB2182F58600DBF401 /* ConvertAudioFile.m */,
 				773925DC2182F58600DBF401 /* ConvertAudioFile.h */,
+				773925DB2182F58600DBF401 /* ConvertAudioFile.m */,
 			);
 			path = ConvertAudio;
 			sourceTree = "<group>";
