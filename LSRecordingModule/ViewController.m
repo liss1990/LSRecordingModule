@@ -25,13 +25,16 @@
 -(void)downnTimer:(NSString *)timerString{
     self.showTime.text = [NSString stringWithFormat:@"还剩下 %@ 秒",timerString];
 }
+
+ 
+
 - (IBAction)startRecording:(UIButton *)sender {
     NSLog(@"开始录音");
     [self.recordingModule startRecording];
 }
 
 - (IBAction)stopRecording:(UIButton *)sender {
-    [self.recordingModule stopRecording]; 
+    [self.recordingModule stopRecording];
 }
 
 
@@ -39,5 +42,6 @@
     NSLog(@"播放录音");
     [self.recordingModule playRecording];
 }
+ 
 
 @end

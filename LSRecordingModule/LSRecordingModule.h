@@ -12,11 +12,12 @@
 @protocol LSRecordingModuleDeleglate <NSObject>
 
 -(void)downnTimer:(NSString *)timerString;
-
+-(void)successMp3Url:(NSString *)mp3url;
 @end
 
 @interface LSRecordingModule : NSObject<AVAudioRecorderDelegate>
-@property(nonatomic,strong)NSTimer *timer;
+//@property(nonatomic,strong)NSTimer *timer;
+@property(nonatomic,strong)dispatch_source_t timer;
 @property(nonatomic,copy) NSString *mp3Path;
 @property(nonatomic,copy) NSString *cafPath;
 @property (nonatomic, strong) AVAudioSession *session;
@@ -28,15 +29,19 @@
 ///录音的倒计时
 @property(nonatomic,assign)NSInteger countDown;
 @property(nonatomic,weak)id<LSRecordingModuleDeleglate> delegate;
+@property(nonatomic,copy)NSString *orderId;
+
++(instancetype)lsRecordingModuleShare;
 
 ///开始录音
 -(void)startRecording;
-//停止录音
+//当暂停用
 -(void)stopRecording; 
 //移除本地录音
--(void)removeRecordingMP3Data;
+-(void)removeRecordingFile:(NSString*)url;
 ///播放录音
--(void)playRecording;
-
+-(void)playRecording; 
+///删除所有文件的所有文件
+-(void)deleteAllFileManager;
 @end
- 
+

@@ -11,6 +11,7 @@
 
 @interface ConvertAudioFile ()
 @property (nonatomic, assign) BOOL stopRecord;
+
 @end
 
 @implementation ConvertAudioFile
@@ -25,6 +26,7 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         instance = [[ConvertAudioFile alloc] init];
+        instance.isPauseRecord = YES;
     });
     return instance;
 }
@@ -40,20 +42,19 @@
 - (void)conventToMp3WithCafFilePath:(NSString *)cafFilePath
                         mp3FilePath:(NSString *)mp3FilePath
                          sampleRate:(int)sampleRate
-                           callback:(void(^)(BOOL result))callback
+                           callback:(void(^)(NSString *resultUrl,NSString *resulMp3Url))callback
 {
-    
-        NSLog(@"convert begin!!");
+    NSLog(@"convert begin!!");
     __weak typeof(self) weakself = self;
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
         weakself.stopRecord = NO;
-    
         @try {
-            
             int read, write;
-            
             FILE *pcm = fopen([cafFilePath cStringUsingEncoding:NSASCIIStringEncoding], "rb");
+            if (pcm == nil) {
+                NSLog(@"-----\n  失败 返回  -----  \n");
+                return ;
+            }
             FILE *mp3 = fopen([mp3FilePath cStringUsingEncoding:NSASCIIStringEncoding], "wb+");
             
             const int PCM_SIZE = 8192;
@@ -93,17 +94,18 @@
                     NSLog(@"read %d bytes", write);
                 } else {
                     [NSThread sleepForTimeInterval:0.05];
-                    NSLog(@"sleep");
+                    //                    NSLog(@"sleep%@",[NSThread mainThread]);
                 }
+                
                 
             } while (! weakself.stopRecord);
             
             read = (int)fread(pcm_buffer, 2 * sizeof(short int), PCM_SIZE, pcm);
             write = lame_encode_flush(lame, mp3_buffer, MP3_SIZE);
-
+            
             NSLog(@"read %d bytes and flush to mp3 file", write);
-            lame_mp3_tags_fid(lame, mp3);
-
+            //            lame_mp3_tags_fid(lame, mp3);
+            
             lame_close(lame);
             fclose(mp3);
             fclose(pcm);
@@ -111,17 +113,17 @@
         @catch (NSException *exception) {
             NSLog(@"%@", [exception description]);
             if (callback) {
-                callback(NO);
+                callback(cafFilePath,mp3FilePath);
             }
         }
         @finally {
             if (callback) {
-                callback(YES);
+                callback(cafFilePath,mp3FilePath);
             }
-            NSLog(@"convert mp3 finish!!! %@", mp3FilePath);
+            NSLog(@" 可以删除的地址 %@    convert mp3 finish!!! %@",cafFilePath, mp3FilePath);
         }
     });
-
+    
 }
 
 /**
@@ -141,7 +143,7 @@
 + (void)conventToMp3WithCafFilePath:(NSString *)cafFilePath
                         mp3FilePath:(NSString *)mp3FilePath
                          sampleRate:(int)sampleRate
-                           callback:(void(^)(BOOL result))callback
+                           callback:(void(^)(NSString *resultUrl,NSString *resulMp3Url))callback
 {
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -150,6 +152,10 @@
             int read, write;
             
             FILE *pcm = fopen([cafFilePath cStringUsingEncoding:1], "rb");  //source 被转换的音频文件位置
+            if (pcm == nil) {
+                NSLog(@"-----\n  失败 返回  -----  \n");
+                return callback(cafFilePath,mp3FilePath);
+            }
             fseek(pcm, 4*1024, SEEK_CUR);                                   //skip file header
             FILE *mp3 = fopen([mp3FilePath cStringUsingEncoding:1], "wb+");  //output 输出生成的Mp3文件位置
             
@@ -159,27 +165,29 @@
             unsigned char mp3_buffer[MP3_SIZE];
             
             lame_t lame = lame_init();
-            lame_set_num_channels(lame,1);//设置1为单通道，默认为2双通道
+            lame_set_num_channels(lame,2);//设置1为单通道，默认为2双通道
             lame_set_in_samplerate(lame, sampleRate);
             lame_set_VBR(lame, vbr_default);
+            lame_set_brate(lame, 16);
+            lame_set_quality(lame, 2);
             lame_init_params(lame);
             
             do {
                 
                 read = (int)fread(pcm_buffer, 2*sizeof(short int), PCM_SIZE, pcm);
                 if (read == 0) {
-                write = lame_encode_flush(lame, mp3_buffer, MP3_SIZE);
-
+                    write = lame_encode_flush(lame, mp3_buffer, MP3_SIZE);
+                    
                 } else {
                     write = lame_encode_buffer_interleaved(lame, pcm_buffer, read, mp3_buffer, MP3_SIZE);
                 }
                 
                 fwrite(mp3_buffer, write, 1, mp3);
-
+                
             } while (read != 0);
-
-            lame_mp3_tags_fid(lame, mp3);
-
+            
+            //            lame_mp3_tags_fid(lame, mp3);
+            
             lame_close(lame);
             fclose(mp3);
             fclose(pcm);
@@ -187,13 +195,13 @@
         @catch (NSException *exception) {
             NSLog(@"%@",[exception description]);
             if (callback) {
-                callback(NO);
+                callback(cafFilePath,mp3FilePath);
             }
         }
         @finally {
             NSLog(@"-----\n  MP3生成成功: %@   -----  \n", mp3FilePath);
             if (callback) {
-                callback(YES);
+                callback(cafFilePath,mp3FilePath);
             }
         }
     });
